@@ -1,42 +1,96 @@
-# Identify 20 Sums Interactive
+# Identify 20 Sums
 
-This repository contains the code for the **Identify 20 Sums Interactive**, designed to help **elementary students** (Grades 1–2) practice finding **addition expressions** that add up to a given number within 20. This supports fluency with addition facts and helps learners build a strong foundation for number sense and mental math.
+React (JSX) drill: a **target sum** (random **6–20**) is shown with **four** expressions **`a + b`**. Exactly **one** evaluates to the target; the learner taps an expression. Correct choice runs a **fade-out**, **canvas-confetti**, success copy, then **`generateNumberAndSums`** after ~4s. Wrong choice **shakes** that button.
 
----
+**Live site:** [https://content-interactives.github.io/identify_20_sums](https://content-interactives.github.io/identify_20_sums)
 
-## 🔗 Live Interactive
-
-Try it out here:  
-👉 https://content-interactives.github.io/identify_20_sums
+Standards and curriculum: [Standards.md](Standards.md).
 
 ---
 
-## 🌐 Where This Interactive Is Being Used
+## Stack
 
-This interactive is currently featured in the following locations:
-
-- <img width="20" height="20" alt="image" src="https://github.com/user-attachments/assets/5d12571f-8e12-4441-98ab-c0bc94069a96" /> **CK-12 Intent Response**  
-  - 👉 PRODUCTION: [PENDING]  
-  - 👉 MASTER: [PENDING]  
-- 📘 **CK-12 Flexbooks**  
-  - 👉 [PENDING: Book/lesson link where this interactive appears]  
-
----
-
-## 📚 Standards & Subjects
-
-This interactive aligns with the following topics and standards:
-
-- **📂 Subject Area**: Elementary Math (Grades 1–2)  
-- **➕ Topic**: Addition within 20, finding sums  
-- **📏 Common Core**:  
-  - **CCSS.MATH.CONTENT.1.OA.C.6** – Add and subtract within 20, demonstrating fluency for addition and subtraction within 10.  
-  - **CCSS.MATH.CONTENT.2.OA.B.2** – Fluently add and subtract within 20 using mental strategies.  
+| Layer | Notes |
+|--------|--------|
+| Build | Vite 7, `@vitejs/plugin-react` |
+| UI | React 19 (`.jsx` only—**not** TypeScript) |
+| Styling | Tailwind 3, `Identify20Sums.css`, `fade.css` from `ui/reused-animations/` |
+| Effects | `canvas-confetti` |
+| Lint / deploy | ESLint 9; `gh-pages -d dist` with `predeploy` build |
 
 ---
 
-## 🛠️ Developer Notes
+## Layout
 
-- **Built with**: React, TypeScript, Vite, Tailwind CSS  
-- **Deployed via**: GitHub Pages  
-- **See**: `src/`, `public/`, `package.json`, `vite.config.js`, and `tailwind.config.js` in the repository
+```
+vite.config.js          # base: '/identify_20_sums/'
+src/
+  main.jsx → App.jsx → components/Identify20Sums.jsx
+  components/
+    Identify20Sums.jsx, Identify20Sums.css
+    ui/reused-ui/       # Container (+ optional sound/reset)
+    ui/reused-animations/
+```
+
+---
+
+## Question generation (`generateNumberAndSums`)
+
+1. **`newNumber`** = `Math.floor(Math.random() * 15) + 6` → **uniform 6…20** (inline comment says “7–20”; the implementation includes **6**).
+2. **`availableNumbers`** = `[1, …, newNumber - 1]`.
+3. **Correct pair:** enumerate **`x`** in `1…newNumber-1`, **`y = newNumber - x`**, require **`y` ∈ [1,15]**, **`x ≠ y`**, both still in **`availableNumbers`**. Pick a random valid pair, push `` `${x} + ${y}` ``, remove **`x`** and **`y`** from the pool.
+4. **Three distractors:** loop until **four** strings total (up to 100 attempts per inner logic). Prefer drawing two distinct values from **`availableNumbers`** when at least two remain; require **`x + y ≠ newNumber`**. If the pool is exhausted, fall back to random **`x, y`** in **`1…newNumber-1`** with **`x ≠ y`** and wrong sum.
+5. **Final while:** if still short of four, add non-duplicate wrong expressions (same random range).
+6. **Shuffle** in place (reverse Fisher–Yates).
+
+Parsing answers uses **`sum.split(' + ')`**—expressions must keep that exact spacing format.
+
+---
+
+## Answer handling (`handleAnswerClick`)
+
+- Parses operands, compares **`x + y`** to **`number`**.
+- **Correct:** sets **`isProcessingCorrectAnswer`** to block double-clicks; **`buttonFadeState`** to **`fade-out`** (all four buttons get the fade class); confetti at 200 ms; success UI at 200 ms; at **4000 ms** clears flags and calls **`generateNumberAndSums`**.
+- **Incorrect:** **`shakeButton === index`** for 500 ms.
+
+Success view shows **`{clickedExpression} = {number}`** and a random string from **`messages`**.
+
+---
+
+## `Container` props
+
+- **`showSoundButton={true}`** with **no `onSound`** — icon is present but does nothing unless you pass a handler.
+- **`showResetButton={false}`** — no in-app reset.
+
+---
+
+## `vite.config.js`
+
+**`base: '/identify_20_sums/'`** must match the GitHub Pages path (underscores). Adjust if the repo slug changes.
+
+---
+
+## Scripts
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Vite dev server |
+| `npm run build` | `dist/` |
+| `npm run preview` | Preview production build |
+| `npm run lint` | ESLint |
+| `npm run deploy` | Build + gh-pages |
+
+---
+
+## Embedding
+
+- **`Container`** uses a fixed **~500px** tall chrome (see `Container.jsx`); grid of four **80px**-tall buttons in two columns.
+- No LMS / `postMessage` API.
+
+---
+
+## Maintenance
+
+- Fix the **target range comment** in code (`7–20` vs actual **6–20**) or change the formula if **7** was intended.
+- **`useRef`** could replace the long **`setTimeout`** chain for cleanup on unmount.
+- Consider resetting **`buttonFadeState`** inside **`generateNumberAndSums`** explicitly before other resets (already **`'visible'`** there).
